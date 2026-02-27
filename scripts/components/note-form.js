@@ -4,6 +4,7 @@ class NoteForm extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this._isSubmitting = false;
     this._formData = {
       title: "",
       body: "",
@@ -19,7 +20,6 @@ class NoteForm extends HTMLElement {
     const form = this.shadowRoot.getElementById("note-form");
     const titleInput = this.shadowRoot.getElementById("title-input");
     const bodyInput = this.shadowRoot.getElementById("body-input");
-    const submitBtn = this.shadowRoot.getElementById("submit-btn");
 
     titleInput.addEventListener("input", (e) => {
       this._formData.title = e.target.value;
@@ -37,9 +37,12 @@ class NoteForm extends HTMLElement {
 
     form.addEventListener("submit", (e) => {
       e.preventDefault();
+      if (this._isSubmitting) {
+        return;
+      }
+
       if (this.validateForm()) {
         this.dispatchNoteAddEvent();
-        this.resetForm();
       }
     });
   }
@@ -72,8 +75,24 @@ class NoteForm extends HTMLElement {
     const isValid = titleValidation.valid && bodyValidation.valid;
     const submitBtn = this.shadowRoot.getElementById("submit-btn");
 
-    submitBtn.disabled = !isValid;
+    submitBtn.disabled = !isValid || this._isSubmitting;
     return isValid;
+  }
+
+  setSubmitting(isSubmitting) {
+    const titleInput = this.shadowRoot.getElementById("title-input");
+    const bodyInput = this.shadowRoot.getElementById("body-input");
+    const submitBtn = this.shadowRoot.getElementById("submit-btn");
+
+    this._isSubmitting = isSubmitting;
+    titleInput.disabled = isSubmitting;
+    bodyInput.disabled = isSubmitting;
+    submitBtn.textContent = isSubmitting ? "Menyimpan..." : "Simpan Catatan";
+    this.validateForm();
+  }
+
+  notifyAddSuccess() {
+    this.resetForm();
   }
 
   toggleError(field, show, message) {

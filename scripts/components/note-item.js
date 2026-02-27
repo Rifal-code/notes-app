@@ -1,4 +1,4 @@
- "use strict";
+"use strict";
 
 class NoteItem extends HTMLElement {
   constructor() {
@@ -7,7 +7,7 @@ class NoteItem extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ["data-id", "archived"];
+    return ["data-id", "archived", "busy"];
   }
 
   connectedCallback() {
@@ -16,7 +16,10 @@ class NoteItem extends HTMLElement {
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
-    if ((name === "data-id" || name === "archived") && oldValue !== newValue) {
+    if (
+      (name === "data-id" || name === "archived" || name === "busy") &&
+      oldValue !== newValue
+    ) {
       this.render();
       this.setupEventListeners();
     }
@@ -42,17 +45,29 @@ class NoteItem extends HTMLElement {
     return this.hasAttribute("archived");
   }
 
+  get isBusy() {
+    return this.hasAttribute("busy");
+  }
+
   setupEventListeners() {
-    const archiveBtn = this.shadowRoot.querySelector(".archive-btn");
+    const archiveBtn = this.shadowRoot.querySelector(".archive-btn, .unarchive-btn");
     const deleteBtn = this.shadowRoot.querySelector(".delete-btn");
 
-    archiveBtn.addEventListener("click", () => {
-      this.dispatchArchiveEvent();
-    });
+    if (archiveBtn) {
+      archiveBtn.addEventListener("click", () => {
+        if (!this.isBusy) {
+          this.dispatchArchiveEvent();
+        }
+      });
+    }
 
-    deleteBtn.addEventListener("click", () => {
-      this.dispatchDeleteEvent();
-    });
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", () => {
+        if (!this.isBusy) {
+          this.dispatchDeleteEvent();
+        }
+      });
+    }
   }
 
   dispatchArchiveEvent() {
@@ -78,6 +93,9 @@ class NoteItem extends HTMLElement {
   }
 
   render() {
+    const archiveLabel = this.isArchived ? "Batal Arsip" : "Arsip";
+    const archiveAria = this.isArchived ? "Batal arsipkan" : "Arsipkan";
+
     const template = `
             <style>
                 :host {
@@ -156,6 +174,10 @@ class NoteItem extends HTMLElement {
                 .delete-btn:hover {
                     background: #c82333;
                 }
+                .action-btn:disabled {
+                    opacity: 0.6;
+                    cursor: wait;
+                }
                 .archived-badge {
                     display: none;
                     background: var(--secondary-color, #6c757d);
@@ -176,10 +198,12 @@ class NoteItem extends HTMLElement {
                 <div class="note-footer">
                     <time class="note-date">${this.noteDate}</time>
                     <div class="note-actions">
-                        <button class="action-btn ${this.isArchived ? "unarchive-btn" : "archive-btn"}" aria-label="${this.isArchived ? "Batal arsipkan" : "Arsipkan"} catatan">
-                            ${this.isArchived ? "Batal Arsip" : "Arsip"}
+                        <button class="action-btn ${this.isArchived ? "unarchive-btn" : "archive-btn"}" aria-label="${archiveAria} catatan" ${this.isBusy ? "disabled" : ""}>
+                            ${this.isBusy ? "Memproses..." : archiveLabel}
                         </button>
-                        <button class="action-btn delete-btn" aria-label="Hapus catatan">Hapus</button>
+                        <button class="action-btn delete-btn" aria-label="Hapus catatan" ${this.isBusy ? "disabled" : ""}>
+                            ${this.isBusy ? "Memproses..." : "Hapus"}
+                        </button>
                     </div>
                 </div>
             </article>

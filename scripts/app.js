@@ -1,5 +1,7 @@
 "use strict";
 
+import "../styles/main.css";
+
 import {
   getNotes,
   addNote,
@@ -7,8 +9,6 @@ import {
   archiveNote,
   initializeState,
 } from "./data.js";
-
-import { formatDate } from "./utils/helpers.js";
 
 import "./components/app-bar.js";
 import "./components/note-form.js";
@@ -19,47 +19,98 @@ import "./components/empty-state.js";
 class App {
   constructor() {
     this.noteList = document.querySelector("note-list");
+    this.noteForm = document.querySelector("note-form");
+    this._eventsBound = false;
     this.initializeApp();
   }
 
-  initializeApp() {
-    initializeState();
-    this.renderNotes();
-    this.setupEventListeners();
+  async initializeApp() {
+    if (!this._eventsBound) {
+      this.setupEventListeners();
+      this._eventsBound = true;
+    }
+
+    this.noteList.setLoading(true);
+    this.noteList.setError("");
+
+    try {
+      await initializeState();
+      this.renderNotes("initial");
+    } catch (error) {
+      this.noteList.setError(error.message || "Gagal memuat catatan.");
+    } finally {
+      this.noteList.setLoading(false);
+    }
   }
 
   setupEventListeners() {
     document.addEventListener("note:add", (e) => {
-      this.handleAddNote(e.detail);
+      void this.handleAddNote(e.detail);
     });
 
     document.addEventListener("note:delete", (e) => {
-      this.handleDeleteNote(e.detail);
+      void this.handleDeleteNote(e.detail);
     });
 
     document.addEventListener("note:archive", (e) => {
-      this.handleArchiveNote(e.detail);
+      void this.handleArchiveNote(e.detail);
+    });
+
+    document.addEventListener("note:retry", () => {
+      void this.initializeApp();
     });
   }
 
-  handleAddNote(noteData) {
-    addNote(noteData);
-    this.renderNotes();
+  async handleAddNote(noteData) {
+    this.noteForm.setSubmitting(true);
+    this.noteList.setError("");
+
+    try {
+      await addNote(noteData);
+      this.noteForm.notifyAddSuccess();
+      this.renderNotes("add");
+    } catch (error) {
+      this.noteList.setError(error.message || "Gagal menambahkan catatan.");
+    } finally {
+      this.noteForm.setSubmitting(false);
+    }
   }
 
-  handleDeleteNote(noteData) {
-    deleteNote(noteData.id);
-    this.renderNotes();
+  async handleDeleteNote(noteData) {
+    this.noteList.setItemBusy(noteData.id, true);
+    this.noteList.setError("");
+
+    try {
+      await deleteNote(noteData.id);
+      this.renderNotes("delete", noteData.id);
+    } catch (error) {
+      this.noteList.setError(error.message || "Gagal menghapus catatan.");
+    } finally {
+      this.noteList.setItemBusy(noteData.id, false);
+    }
   }
 
-  handleArchiveNote(noteData) {
-    archiveNote(noteData.id);
-    this.renderNotes();
+  async handleArchiveNote(noteData) {
+    this.noteList.setItemBusy(noteData.id, true);
+    this.noteList.setError("");
+
+    try {
+      await archiveNote(noteData.id);
+      this.renderNotes("archive", noteData.id);
+    } catch (error) {
+      this.noteList.setError(error.message || "Gagal mengubah arsip catatan.");
+    } finally {
+      this.noteList.setItemBusy(noteData.id, false);
+    }
   }
 
-  renderNotes() {
+  renderNotes(action = "initial", noteId = null) {
     const notes = getNotes();
     this.noteList.notes = notes;
+
+    requestAnimationFrame(() => {
+      this.noteList.animate(action, noteId);
+    });
   }
 }
 
