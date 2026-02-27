@@ -48,15 +48,26 @@ async function refreshNotes() {
   setError("");
 
   try {
-    const [activeNotes, archivedNotes] = await Promise.all([
+    const [activeResult, archivedResult] = await Promise.allSettled([
       getActiveNotes(),
       getArchivedNotes(),
     ]);
+
+    if (activeResult.status !== "fulfilled") {
+      throw activeResult.reason;
+    }
+
+    const activeNotes = Array.isArray(activeResult.value) ? activeResult.value : [];
+    const archivedNotes =
+      archivedResult.status === "fulfilled" && Array.isArray(archivedResult.value)
+        ? archivedResult.value
+        : [];
 
     state.notes = sortByNewest([...activeNotes, ...archivedNotes]);
     return getNotes();
   } catch (error) {
     const message = error?.message || "Gagal memuat catatan dari server.";
+    console.error("refreshNotes failed:", error);
     setError(message);
     throw new Error(message);
   } finally {
