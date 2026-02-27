@@ -87,7 +87,10 @@ class NoteForm extends HTMLElement {
     this._isSubmitting = isSubmitting;
     titleInput.disabled = isSubmitting;
     bodyInput.disabled = isSubmitting;
-    submitBtn.textContent = isSubmitting ? "Menyimpan..." : "Simpan Catatan";
+    submitBtn.setAttribute("aria-busy", isSubmitting ? "true" : "false");
+    submitBtn.innerHTML = isSubmitting
+      ? `<span class="btn-content"><span class="spinner" aria-hidden="true"></span><span>Menyimpan...</span></span>`
+      : "Simpan Catatan";
     this.validateForm();
   }
 
@@ -200,6 +203,25 @@ class NoteForm extends HTMLElement {
                     font-weight: 500;
                     cursor: pointer;
                     transition: background var(--transition-fast, 0.15s ease);
+                }
+                .btn-content {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                }
+                .spinner {
+                    width: 14px;
+                    height: 14px;
+                    border: 2px solid rgba(255, 255, 255, 0.35);
+                    border-top-color: #ffffff;
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                }
+                @keyframes spin {
+                    to {
+                        transform: rotate(360deg);
+                    }
                 }
                 button:hover:not(:disabled) {
                     background: var(--primary-hover, #357abd);

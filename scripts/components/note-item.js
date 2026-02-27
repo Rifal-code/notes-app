@@ -96,6 +96,14 @@ class NoteItem extends HTMLElement {
     const archiveLabel = this.isArchived ? "Batal Arsip" : "Arsip";
     const archiveAria = this.isArchived ? "Batal arsipkan" : "Arsipkan";
 
+    const archiveContent = this.isBusy
+      ? `<span class="btn-content"><span class="spinner" aria-hidden="true"></span><span>Memproses...</span></span>`
+      : archiveLabel;
+
+    const deleteContent = this.isBusy
+      ? `<span class="btn-content"><span class="spinner" aria-hidden="true"></span><span>Memproses...</span></span>`
+      : "Hapus";
+
     const template = `
             <style>
                 :host {
@@ -153,6 +161,24 @@ class NoteItem extends HTMLElement {
                     cursor: pointer;
                     transition: background var(--transition-fast, 0.15s ease);
                 }
+                .btn-content {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                .spinner {
+                    width: 12px;
+                    height: 12px;
+                    border: 2px solid rgba(0, 0, 0, 0.25);
+                    border-top-color: currentColor;
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
+                }
+                @keyframes spin {
+                    to {
+                        transform: rotate(360deg);
+                    }
+                }
                 .archive-btn {
                     background: var(--warning-color, #ffc107);
                     color: var(--text-primary, #212529);
@@ -191,7 +217,7 @@ class NoteItem extends HTMLElement {
                     display: inline-block;
                 }
             </style>
-            <article class="note-card">
+            <article class="note-card" aria-busy="${this.isBusy ? "true" : "false"}">
                 <span class="archived-badge">Diarsipkan</span>
                 <h3 class="note-title">${this.noteTitle}</h3>
                 <p class="note-body">${this.noteBody}</p>
@@ -199,10 +225,10 @@ class NoteItem extends HTMLElement {
                     <time class="note-date">${this.noteDate}</time>
                     <div class="note-actions">
                         <button class="action-btn ${this.isArchived ? "unarchive-btn" : "archive-btn"}" aria-label="${archiveAria} catatan" ${this.isBusy ? "disabled" : ""}>
-                            ${this.isBusy ? "Memproses..." : archiveLabel}
+                            ${archiveContent}
                         </button>
                         <button class="action-btn delete-btn" aria-label="Hapus catatan" ${this.isBusy ? "disabled" : ""}>
-                            ${this.isBusy ? "Memproses..." : "Hapus"}
+                            ${deleteContent}
                         </button>
                     </div>
                 </div>
