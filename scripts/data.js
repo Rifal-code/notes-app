@@ -10,7 +10,8 @@ import {
 } from "../data/notes-api.js";
 
 const state = {
-  notes: [],
+  activeNotes: [],
+  archivedNotes: [],
   loading: false,
   error: "",
 };
@@ -28,11 +29,19 @@ function setError(message) {
 }
 
 function getNotes() {
-  return [...state.notes];
+  return [...state.activeNotes, ...state.archivedNotes];
+}
+
+function getActiveNotesState() {
+  return [...state.activeNotes];
+}
+
+function getArchivedNotesState() {
+  return [...state.archivedNotes];
 }
 
 function getNoteById(id) {
-  return state.notes.find((note) => note.id === id) || null;
+  return [...state.activeNotes, ...state.archivedNotes].find((note) => note.id === id) || null;
 }
 
 function isLoading() {
@@ -63,7 +72,8 @@ async function refreshNotes() {
         ? archivedResult.value
         : [];
 
-    state.notes = sortByNewest([...activeNotes, ...archivedNotes]);
+    state.activeNotes = sortByNewest(activeNotes);
+    state.archivedNotes = sortByNewest(archivedNotes);
     return getNotes();
   } catch (error) {
     const message = error?.message || "Gagal memuat catatan dari server.";
@@ -139,6 +149,8 @@ async function archiveNote(id) {
 
 export {
   getNotes,
+  getActiveNotesState,
+  getArchivedNotesState,
   getNoteById,
   isLoading,
   getError,

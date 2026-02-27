@@ -6,8 +6,10 @@ class NoteList extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._notes = [];
+    this._activeNotes = [];
+    this._archivedNotes = [];
     this._isLoading = false;
+    this._loadingType = "action";
     this._error = "";
   }
 
@@ -17,16 +19,28 @@ class NoteList extends HTMLElement {
   }
 
   get notes() {
-    return this._notes || [];
+    return [...this._activeNotes, ...this._archivedNotes];
   }
 
   set notes(value) {
-    this._notes = Array.isArray(value) ? value : [];
+    this._activeNotes = Array.isArray(value)
+      ? value.filter((note) => !note.archived)
+      : [];
+    this._archivedNotes = Array.isArray(value)
+      ? value.filter((note) => note.archived)
+      : [];
     this.renderNotes();
   }
 
-  setLoading(value) {
+  setNotes(activeNotes, archivedNotes) {
+    this._activeNotes = Array.isArray(activeNotes) ? activeNotes : [];
+    this._archivedNotes = Array.isArray(archivedNotes) ? archivedNotes : [];
+    this.renderNotes();
+  }
+
+  setLoading(value, type = "action") {
     this._isLoading = Boolean(value);
+    this._loadingType = type === "initial" ? "initial" : "action";
     this.renderNotes();
   }
 
@@ -36,7 +50,9 @@ class NoteList extends HTMLElement {
   }
 
   setItemBusy(noteId, isBusy) {
-    const item = this.shadowRoot.querySelector(`note-item[data-id="${noteId}"]`);
+    const item = this.shadowRoot.querySelector(
+      `note-item[data-id="${noteId}"]`,
+    );
     if (!item) {
       return;
     }
@@ -74,7 +90,9 @@ class NoteList extends HTMLElement {
     }
 
     if (action === "archive" && noteId) {
-      const target = this.shadowRoot.querySelector(`note-item[data-id="${noteId}"]`);
+      const target = this.shadowRoot.querySelector(
+        `note-item[data-id="${noteId}"]`,
+      );
       if (!target) {
         return;
       }
@@ -104,7 +122,34 @@ class NoteList extends HTMLElement {
                 .notes-grid {
                     display: grid;
                     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                    gap: var(--spacing-md, 16px);
+                    gap: 16px;
+                }
+                .notes-section {
+                    padding: var(--spacing-md, 16px);
+                    margin-bottom: var(--spacing-lg, 24px);
+                }
+                .section-title {
+                    margin: 0 0 var(--spacing-sm, 8px) 0;
+                    font-size: 1.1rem;
+                    color: var(--text-primary, #212529);
+                }
+                .global-loader {
+                    margin-bottom: var(--spacing-md, 16px);
+                    padding: 10px 12px;
+                    border-radius: var(--border-radius-sm, 4px);
+                    background: #e9f2ff;
+                    color: #0b3d91;
+                    border: 1px solid #cfe2ff;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .loader-dot {
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 50%;
+                    background: currentColor;
+                    animation: pulse 1s ease-in-out infinite;
                 }
                 .error-box {
                     margin-bottom: var(--spacing-md, 16px);
@@ -151,26 +196,42 @@ class NoteList extends HTMLElement {
                     0% { background-position: -200% 0; }
                     100% { background-position: 200% 0; }
                 }
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.45; transform: scale(0.85); }
+                }
                 @media (max-width: 600px) {
                     .notes-grid {
                         grid-template-columns: 1fr;
                     }
                 }
             </style>
+            <div id="global-loader"></div>
             <div id="error-wrap"></div>
-            <div class="notes-grid" id="notes-grid"></div>
+            <section class="notes-section">
+              <h2 class="section-title">Active Notes</h2>
+              <div class="notes-grid" id="active-notes-grid"></div>
+            </section>
+            <section class="notes-section">
+              <h2 class="section-title">Archived Notes</h2>
+              <div class="notes-grid" id="archived-notes-grid"></div>
+            </section>
         `;
     this.shadowRoot.innerHTML = template;
   }
 
   renderNotes() {
-    const grid = this.shadowRoot.getElementById("notes-grid");
+    const loaderWrap = this.shadowRoot.getElementById("global-loader");
+    const activeGrid = this.shadowRoot.getElementById("active-notes-grid");
+    const archivedGrid = this.shadowRoot.getElementById("archived-notes-grid");
     const errorWrap = this.shadowRoot.getElementById("error-wrap");
-    if (!grid || !errorWrap) {
+    if (!loaderWrap || !activeGrid || !archivedGrid || !errorWrap) {
       return;
     }
 
-    grid.innerHTML = "";
+    loaderWrap.innerHTML = "";
+    activeGrid.innerHTML = "";
+    archivedGrid.innerHTML = "";
     errorWrap.innerHTML = "";
 
     if (this._error) {
@@ -186,27 +247,49 @@ class NoteList extends HTMLElement {
     }
 
     if (this._isLoading) {
+      const loadingLabel =
+        this._loadingType === "initial"
+          ? "Memuat catatan..."
+          : "Memproses perubahan...";
+      loaderWrap.innerHTML = `
+        <div class="global-loader" role="status" aria-live="polite">
+          <span class="loader-dot" aria-hidden="true"></span>
+          <span>${loadingLabel}</span>
+        </div>
+      `;
+
       for (let i = 0; i < 6; i += 1) {
-        const skeleton = document.createElement("div");
-        skeleton.className = "skeleton-card";
-        grid.appendChild(skeleton);
+        const skeletonActive = document.createElement("div");
+        skeletonActive.className = "skeleton-card";
+        activeGrid.appendChild(skeletonActive);
+
+        const skeletonArchived = document.createElement("div");
+        skeletonArchived.className = "skeleton-card";
+        archivedGrid.appendChild(skeletonArchived);
       }
       return;
     }
 
-    if (this.notes.length === 0) {
-      grid.innerHTML = `
+    if (this._activeNotes.length === 0) {
+      activeGrid.innerHTML = `
         <div class="empty-container">
-            <h3 class="empty-title">Belum Ada Catatan</h3>
+            <h3 class="empty-title">Belum Ada Catatan Aktif</h3>
             <p class="empty-desc">Tambahkan catatan pertama Anda.</p>
         </div>
       `;
-      return;
     }
 
-    const fragment = document.createDocumentFragment();
+    if (this._archivedNotes.length === 0) {
+      archivedGrid.innerHTML = `
+        <div class="empty-container">
+            <h3 class="empty-title">Belum Ada Catatan Arsip</h3>
+            <p class="empty-desc">Catatan yang diarsipkan akan tampil di sini.</p>
+        </div>
+      `;
+    }
 
-    this.notes.forEach((note) => {
+    const activeFragment = document.createDocumentFragment();
+    this._activeNotes.forEach((note) => {
       const noteItem = document.createElement("note-item");
       noteItem.setAttribute("data-id", note.id);
       noteItem.setAttribute("data-title", note.title);
@@ -217,10 +300,25 @@ class NoteList extends HTMLElement {
       } else {
         noteItem.removeAttribute("archived");
       }
-      fragment.appendChild(noteItem);
+      activeFragment.appendChild(noteItem);
     });
+    if (this._activeNotes.length > 0) {
+      activeGrid.appendChild(activeFragment);
+    }
 
-    grid.appendChild(fragment);
+    const archivedFragment = document.createDocumentFragment();
+    this._archivedNotes.forEach((note) => {
+      const noteItem = document.createElement("note-item");
+      noteItem.setAttribute("data-id", note.id);
+      noteItem.setAttribute("data-title", note.title);
+      noteItem.setAttribute("data-body", note.body);
+      noteItem.setAttribute("data-date", this.formatDate(note.createdAt));
+      noteItem.setAttribute("archived", "");
+      archivedFragment.appendChild(noteItem);
+    });
+    if (this._archivedNotes.length > 0) {
+      archivedGrid.appendChild(archivedFragment);
+    }
   }
 
   formatDate(isoString) {

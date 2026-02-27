@@ -50,7 +50,9 @@ class NoteItem extends HTMLElement {
   }
 
   setupEventListeners() {
-    const archiveBtn = this.shadowRoot.querySelector(".archive-btn, .unarchive-btn");
+    const archiveBtn = this.shadowRoot.querySelector(
+      ".archive-btn, .unarchive-btn",
+    );
     const deleteBtn = this.shadowRoot.querySelector(".delete-btn");
 
     if (archiveBtn) {
@@ -116,8 +118,7 @@ class NoteItem extends HTMLElement {
                     box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1));
                     transition: box-shadow var(--transition-normal, 0.3s ease);
                     display: flex;
-                    flex-direction: column;
-                    height: 100%;
+                    flex-direction: column;                    
                 }
                 .note-card:hover {
                     box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.15));

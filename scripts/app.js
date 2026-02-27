@@ -3,7 +3,8 @@
 import "../styles/main.css";
 
 import {
-  getNotes,
+  getActiveNotesState,
+  getArchivedNotesState,
   addNote,
   deleteNote,
   archiveNote,
@@ -30,7 +31,7 @@ class App {
       this._eventsBound = true;
     }
 
-    this.noteList.setLoading(true);
+    this.noteList.setLoading(true, "initial");
     this.noteList.setError("");
 
     try {
@@ -39,7 +40,7 @@ class App {
     } catch (error) {
       this.noteList.setError(error.message || "Gagal memuat catatan.");
     } finally {
-      this.noteList.setLoading(false);
+      this.noteList.setLoading(false, "initial");
     }
   }
 
@@ -63,6 +64,7 @@ class App {
 
   async handleAddNote(noteData) {
     this.noteForm.setSubmitting(true);
+    this.noteList.setLoading(true, "action");
     this.noteList.setError("");
 
     try {
@@ -72,12 +74,14 @@ class App {
     } catch (error) {
       this.noteList.setError(error.message || "Gagal menambahkan catatan.");
     } finally {
+      this.noteList.setLoading(false, "action");
       this.noteForm.setSubmitting(false);
     }
   }
 
   async handleDeleteNote(noteData) {
     this.noteList.setItemBusy(noteData.id, true);
+    this.noteList.setLoading(true, "action");
     this.noteList.setError("");
 
     try {
@@ -86,12 +90,14 @@ class App {
     } catch (error) {
       this.noteList.setError(error.message || "Gagal menghapus catatan.");
     } finally {
+      this.noteList.setLoading(false, "action");
       this.noteList.setItemBusy(noteData.id, false);
     }
   }
 
   async handleArchiveNote(noteData) {
     this.noteList.setItemBusy(noteData.id, true);
+    this.noteList.setLoading(true, "action");
     this.noteList.setError("");
 
     try {
@@ -100,13 +106,15 @@ class App {
     } catch (error) {
       this.noteList.setError(error.message || "Gagal mengubah arsip catatan.");
     } finally {
+      this.noteList.setLoading(false, "action");
       this.noteList.setItemBusy(noteData.id, false);
     }
   }
 
   renderNotes(action = "initial", noteId = null) {
-    const notes = getNotes();
-    this.noteList.notes = notes;
+    const activeNotes = getActiveNotesState();
+    const archivedNotes = getArchivedNotesState();
+    this.noteList.setNotes(activeNotes, archivedNotes);
 
     requestAnimationFrame(() => {
       this.noteList.animate(action, noteId);
